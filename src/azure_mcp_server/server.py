@@ -7,6 +7,7 @@ from pydantic import AnyUrl
 import mcp.server.stdio
 from typing import Any
 import os
+import json
 
 from azure.identity import EnvironmentCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -60,22 +61,28 @@ async def handle_list_tools() -> list[types.Tool]:
 @server.call_tool()
 async def handle_call_tool(
     name: str, arguments: dict | None
-) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
+) -> list[types.TextContent]:
     """
     Handle tool execution requests.
     Tools can modify server state and notify clients of changes.
     """
     if name == "list-subscriptions":
-        return await list_subscriptions()
+        response = await list_subscriptions()
+        return types.TextContent(type="text", text=json.dumps(response))
     
-    if name == "list-resource-groups":
+    elif name == "list-resource-groups":
         subscription_id = arguments.get("subscription_id", None)
-        return await list_resource_groups(subscription_id)
+        response = await list_resource_groups(subscription_id)
+        return types.TextContent(type="text", text=json.dumps(response))
     
-    if name == "list-resources":
+    elif name == "list-resources":
         subscription_id = arguments.get("subscription_id", None)
         resource_group = arguments.get("resource_group")
-        return await list_resources(resource_group, subscription_id)
+        result = await list_resources(resource_group, subscription_id)
+        return types.TextContent(type="text", text=json.dumps(response))
+    
+    else:
+        return types.TextContent(type="text", text="Invalid tool name.")
 
 async def main():
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
