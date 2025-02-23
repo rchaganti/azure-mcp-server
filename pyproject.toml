@@ -1,0 +1,23 @@
+[project]
+name = "azure-mcp-server"
+version = "0.1.0"
+description = "An MCP server for interacting with and managing Azure resources."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+ "azure-identity>=1.20.0",
+ "azure-mgmt-resource>=23.2.0",
+ "azure-mgmt-subscription>=3.1.1",
+ "mcp>=1.3.0",
+ "python-dotenv>=1.0.1",
+]
+[[project.authors]]
+name = "Ravikanth C"
+email = "ravikanth@ravichaganti.com"
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+azure-mcp-server = "azure_mcp_server:main"
