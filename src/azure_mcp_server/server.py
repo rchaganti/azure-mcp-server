@@ -7,7 +7,6 @@ from pydantic import AnyUrl
 import mcp.server.stdio
 from typing import Any
 import os
-import json
 
 from azure.identity import EnvironmentCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -45,6 +44,22 @@ async def handle_list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="create-resource-group",
+            description="Create a resource group in an Azure subscription.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subscription_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "location": {"type": "string"},
+                },
+                "required": [
+                    "name",
+                    "location",
+                ],
+            },
+        ),        
+        types.Tool(
             name="list-resources",
             description="List all resources in a resource group.",
             inputSchema={
@@ -53,7 +68,9 @@ async def handle_list_tools() -> list[types.Tool]:
                     "subscription_id": {"type": "string"},
                     "resource_group": {"type": "string"}
                 },
-                "required": ["resource_group"],
+                "required": [
+                    "resource_group"
+                ],
             },
         )                
     ]
@@ -81,6 +98,14 @@ async def handle_call_tool(
         for group in response:
             respText += f"Name: {group['name']}, Location: {group['location']}\n"
     
+    elif name == "create-resource-group":
+        subscription_id = arguments.get("subscription_id", None)
+        name = arguments.get("name")
+        location = arguments.get("location")
+        response = await create_resource_group(name, location, subscription_id)
+        if response != None:
+            respText = f"Resource Group {name} created in {subscription_id}:\n"
+
     elif name == "list-resources":
         subscription_id = arguments.get("subscription_id", None)
         resource_group = arguments.get("resource_group")
@@ -160,6 +185,28 @@ async def list_resource_groups(subscription_id=None) -> list[dict[str, Any]]:
         resource_groups.append(resource)
 
     return resource_groups
+
+async def create_resource_group(name: str, location: str, subscription_id=None) -> list[dict[str, Any]]:
+    """Create a resource group in the subscription.
+    
+    Args:
+        subscription_id (str): The subscription ID. This is an optional parameter.
+        name (str): The name of the resource group.
+        location (str): The location of the resource group
+    """
+    credential = EnvironmentCredential()
+    if subscription_id is None:
+        if "AZURE_SUBSCRIPTION_ID" not in os.environ:
+            raise ValueError("subscription_id must be provided or set as an environment variable.")
+        else:
+            subscription_id = os.environ["AZURE_SUBSCRIPTION_ID"]
+
+    resource_client = ResourceManagementClient(credential, subscription_id)
+    rg_result = resource_client.resource_groups.create_or_update(
+        name, {"location": location}
+    )
+
+    return rg_result
 
 async def list_resources(resource_group, subscription_id) -> list[dict[str, Any]]:
     """List all resources in the resource group.
