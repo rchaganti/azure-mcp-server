@@ -61,28 +61,44 @@ async def handle_list_tools() -> list[types.Tool]:
 @server.call_tool()
 async def handle_call_tool(
     name: str, arguments: dict | None
-) -> list[types.TextContent]:
+) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     """
     Handle tool execution requests.
     Tools can modify server state and notify clients of changes.
     """
     if name == "list-subscriptions":
         response = await list_subscriptions()
-        return types.TextContent(type="text", text=json.dumps(response))
+        respText = "Subscriptions:\n"
+        
+        for subscription in response:
+            respText += f"ID: {subscription['id']}, Name: {subscription['name']}\n"
     
     elif name == "list-resource-groups":
         subscription_id = arguments.get("subscription_id", None)
         response = await list_resource_groups(subscription_id)
-        return types.TextContent(type="text", text=json.dumps(response))
+        respText = f"Resource Groups in {subscription_id}:\n"
+        
+        for group in response:
+            respText += f"Name: {group['name']}, Location: {group['location']}\n"
     
     elif name == "list-resources":
         subscription_id = arguments.get("subscription_id", None)
         resource_group = arguments.get("resource_group")
         result = await list_resources(resource_group, subscription_id)
-        return types.TextContent(type="text", text=json.dumps(response))
+        respText = f"Resources in {resource_group} in the {subscription_id}:\n"
+
+        for resource in result:
+            respText += f"Name: {resource['name']}, Type: {resource['type']}, Location: {resource['location']}\n"
     
     else:
-        return types.TextContent(type="text", text="Invalid tool name.")
+        respText = "Invalid tool name."
+    
+    return [
+            types.TextContent(
+                type="text",
+                text=respText
+            )
+        ]
 
 async def main():
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
