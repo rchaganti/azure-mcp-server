@@ -6,6 +6,7 @@ import mcp.server.stdio
 import azure.tools.resourcegroup as azrg
 import azure.tools.resources as azr
 import azure.tools.subscription as azs
+import azure.tools.storage as azst
 
 from dotenv import load_dotenv
 
@@ -68,7 +69,21 @@ async def handle_list_tools() -> list[types.Tool]:
                     "resource_group"
                 ],
             },
-        )                
+        ),    
+        types.Tool(
+            name="check-storage-account-name-availability",
+            description="Check if the specified storage account name is available or a valid storage account name.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subscription_id": {"type": "string"},
+                    "storage_account_name": {"type": "string"}
+                },
+                "required": [
+                    "storage_account_name"
+                ],
+            },
+        ),         
     ]
 
 @server.call_tool()
@@ -110,6 +125,12 @@ async def handle_call_tool(
 
         for resource in result:
             respText += f"Name: {resource['name']}, Type: {resource['type']}, Location: {resource['location']}\n"
+
+    elif name == "check-storage-account-name-availability":
+        subscription_id = arguments.get("subscription_id", None)
+        storage_account_name = arguments.get("storage_account_name")
+        result = await azst.check_storage_account_name_availability(subscription_id, storage_account_name)
+        respText = f"Storage Account Name: {storage_account_name}, Availability: {result['is_name_available']}, Reason: {result['reason']}\n"
     
     else:
         respText = "Invalid tool name."
